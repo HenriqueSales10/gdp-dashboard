@@ -1,151 +1,82 @@
 import streamlit as st
 import pandas as pd
-import math
-from pathlib import Path
+import plotly.express as px
+from io import BytesIO
 
-# Set the title and favicon that appear in the Browser's tab bar.
-st.set_page_config(
-    page_title='GDP dashboard 2024',
-    page_icon=':earth_americas:', # This is an emoji shortcode. Could be a URL too.
-)
-
-# -----------------------------------------------------------------------------
-# Declare some useful functions.
-
+# Função para carregar os dados
 @st.cache_data
-def get_gdp_data():
-    """Grab GDP data from a CSV file.
+def get_empenhos_data(file):
+    """Carregar os dados dos empenhos do governo federal a partir do arquivo enviado."""
+    
+    # Carregar o arquivo Excel
+    raw_empenhos_df = pd.read_excel(file)
+    
+    # Converter a coluna 'Data Emissão' para o formato de data
+    raw_empenhos_df['Data Emissão'] = pd.to_datetime(raw_empenhos_df['Data Emissão'], format='%d/%m/%Y')
+    
+    # Filtrar apenas os dados de janeiro de 2024
+    raw_empenhos_df = raw_empenhos_df[raw_empenhos_df['Data Emissão'].dt.month == 1]
+    raw_empenhos_df['Ano'] = raw_empenhos_df['Data Emissão'].dt.year
 
-    This uses caching to avoid having to read the file every time. If we were
-    reading from an HTTP endpoint instead of a file, it's a good idea to set
-    a maximum age to the cache with the TTL argument: @st.cache_data(ttl='1d')
-    """
+    return raw_empenhos_df
 
-    # Instead of a CSV on disk, you could read from an HTTP endpoint here too.
-    DATA_FILENAME = Path(__file__).parent/'data/gdp_data.csv'
-    raw_gdp_df = pd.read_csv(DATA_FILENAME)
+# Interface para upload do arquivo Excel
+st.title('Análise dos Empenhos do Governo Federal - Janeiro de 2024')
 
-    MIN_YEAR = 1960
-    MAX_YEAR = 2022
+uploaded_file = st.file_uploader("Faça o upload do arquivo Excel", type=["xlsx"])
 
-    # The data above has columns like:
-    # - Country Name
-    # - Country Code
-    # - [Stuff I don't care about]
-    # - GDP for 1960
-    # - GDP for 1961
-    # - GDP for 1962
-    # - ...
-    # - GDP for 2022
-    #
-    # ...but I want this instead:
-    # - Country Name
-    # - Country Code
-    # - Year
-    # - GDP
-    #
-    # So let's pivot all those year-columns into two: Year and GDP
-    gdp_df = raw_gdp_df.melt(
-        ['Country Code'],
-        [str(x) for x in range(MIN_YEAR, MAX_YEAR + 1)],
-        'Year',
-        'GDP',
+if uploaded_file is not None:
+    # Carregar os dados do arquivo
+    empenhos_df = get_empenhos_data(uploaded_file)
+
+    # Filtros de Ano
+    min_value = empenhos_df['Ano'].min()
+    max_value = empenhos_df['Ano'].max()
+
+    from_year, to_year = st.slider(
+        'Selecione o período de interesse:',
+        min_value=min_value,
+        max_value=max_value,
+        value=[min_value, max_value]
     )
 
-    # Convert years from string to integers
-    gdp_df['Year'] = pd.to_numeric(gdp_df['Year'])
+    # Filtro para Órgãos Governamentais
+    orgaos = empenhos_df['Órgão'].unique()
+    selected_orgaos = st.multiselect(
+        'Selecione os órgãos governamentais:',
+        orgaos,
+        orgaos.tolist()
+    )
 
-    return gdp_df
+    # Filtrando os dados conforme as seleções
+    filtered_empenhos_df = empenhos_df[
+        (empenhos_df['Órgão'].isin(selected_orgaos)) &
+        (empenhos_df['Ano'] >= from_year) & (empenhos_df['Ano'] <= to_year)
+    ]
 
-gdp_df = get_gdp_data()
+    # Gráfico 1: Distribuição por Categoria de Despesa
+    st.header('Distribuição por Categoria de Despesa')
+    categoria_economica = filtered_empenhos_df['Categoria de Despesa'].value_counts()
+    fig1 = px.pie(categoria_economica, values=categoria_economica.values, names=categoria_economica.index, title='Distribuição por Categoria de Despesa')
+    st.plotly_chart(fig1)
 
-# -----------------------------------------------------------------------------
-# Draw the actual page
+    # Gráfico 2: Maiores Beneficiários
+    st.header('Maiores Beneficiários dos Empenhos')
+    maiores_beneficiarios = filtered_empenhos_df.groupby('Favorecido')['Valor do Empenho Convertido pra R$'].sum().sort_values(ascending=False).head(10)
+    fig2 = px.bar(maiores_beneficiarios, x=maiores_beneficiarios.index, y=maiores_beneficiarios.values, title='Top 10 Maiores Beneficiários')
+    st.plotly_chart(fig2)
 
-# Set the title that appears at the top of the page.
-'''
-# :earth_americas: GDP dashboard 2024
+    # Gráfico 3: Comparação por Órgão Governamental
+    st.header('Comparação por Órgão Governamental')
+    comparacao_orgaos = filtered_empenhos_df.groupby('Órgão')['Valor do Empenho Convertido pra R$'].sum().sort_values(ascending=False).head(10)
+    fig3 = px.bar(comparacao_orgaos, x=comparacao_orgaos.index, y=comparacao_orgaos.values, title='Top 10 Órgãos com Maior Valor Empenhado')
+    st.plotly_chart(fig3)
 
-Browse GDP data from the [World Bank Open Data](https://data.worldbank.org/) website. As you'll
-notice, the data only goes to 2022 right now, and datapoints for certain years are often missing.
-But it's otherwise a great (and did I mention _free_?) source of data.
-'''
+    # Gráfico 4: Evolução dos Valores Empenhados ao Longo do Mês
+    st.header('Evolução dos Valores Empenhados')
+    evolucao_mensal = filtered_empenhos_df.groupby(['Ano', 'Mês'])['Valor do Empenho Convertido pra R$'].sum()
+    fig4 = px.line(evolucao_mensal, x=evolucao_mensal.index, y=evolucao_mensal.values, title='Evolução dos Valores Empenhados')
+    st.plotly_chart(fig4)
 
-# Add some spacing
-''
-''
-
-min_value = gdp_df['Year'].min()
-max_value = gdp_df['Year'].max()
-
-from_year, to_year = st.slider(
-    'Which years are you interested in?',
-    min_value=min_value,
-    max_value=max_value,
-    value=[min_value, max_value])
-
-countries = gdp_df['Country Code'].unique()
-
-if not len(countries):
-    st.warning("Select at least one country")
-
-selected_countries = st.multiselect(
-    'Which countries would you like to view?',
-    countries,
-    ['DEU', 'FRA', 'GBR', 'BRA', 'MEX', 'JPN'])
-
-''
-''
-''
-
-# Filter the data
-filtered_gdp_df = gdp_df[
-    (gdp_df['Country Code'].isin(selected_countries))
-    & (gdp_df['Year'] <= to_year)
-    & (from_year <= gdp_df['Year'])
-]
-
-st.header('GDP over time', divider='gray')
-
-''
-
-st.line_chart(
-    filtered_gdp_df,
-    x='Year',
-    y='GDP',
-    color='Country Code',
-)
-
-''
-''
-
-
-first_year = gdp_df[gdp_df['Year'] == from_year]
-last_year = gdp_df[gdp_df['Year'] == to_year]
-
-st.header(f'GDP in {to_year}', divider='gray')
-
-''
-
-cols = st.columns(4)
-
-for i, country in enumerate(selected_countries):
-    col = cols[i % len(cols)]
-
-    with col:
-        first_gdp = first_year[first_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
-        last_gdp = last_year[last_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
-
-        if math.isnan(first_gdp):
-            growth = 'n/a'
-            delta_color = 'off'
-        else:
-            growth = f'{last_gdp / first_gdp:,.2f}x'
-            delta_color = 'normal'
-
-        st.metric(
-            label=f'{country} GDP',
-            value=f'{last_gdp:,.0f}B',
-            delta=growth,
-            delta_color=delta_color
-        )
+else:
+    st.warning("Por favor, faça o upload de um arquivo Excel para visualizar os dados.")
