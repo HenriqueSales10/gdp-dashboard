@@ -21,6 +21,16 @@ def formatar_real(valor):
     """Formata valores para o formato monetário brasileiro."""
     return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
+# Função para adicionar a unidade (milhões ou bilhões) ao final
+def adicionar_unidade(valor):
+    """Adiciona a unidade 'milhões' ou 'bilhões' ao final do valor."""
+    if valor >= 1e9:
+        return f"{formatar_real(valor)} (bilhões)"
+    elif valor >= 1e6:
+        return f"{formatar_real(valor)} (milhões)"
+    else:
+        return formatar_real(valor)
+
 # Carregar os dados de empenhos
 df = get_empenhos_data()
 
@@ -60,12 +70,13 @@ st.header('Valores Considerados para os Cálculos', divider='gray')
 filtered_df_display = filtered_df.copy()
 filtered_df_display['Valor do Empenho Convertido pra R$'] = filtered_df_display[
     'Valor do Empenho Convertido pra R$'
-].apply(formatar_real)
+].apply(adicionar_unidade)
 st.write(filtered_df_display[['Id Empenho', 'Data Emissão', 'Categoria de Despesa', 'Valor do Empenho Convertido pra R$']])
 
 # Gráfico de evolução dos valores empenhados ao longo do tempo
 st.header('Evolução dos valores empenhados ao longo do tempo', divider='gray')
 evolution_df = filtered_df.groupby(['Data Emissão'])['Valor do Empenho Convertido pra R$'].sum().reset_index()
+evolution_df['Valor Formatado'] = evolution_df['Valor do Empenho Convertido pra R$'].apply(adicionar_unidade)
 evolution_chart = (
     alt.Chart(evolution_df)
     .mark_line(point=True)
@@ -74,7 +85,7 @@ evolution_chart = (
         y=alt.Y('Valor do Empenho Convertido pra R$:Q', title='Valor (R$)'),
         tooltip=[
             alt.Tooltip('Data Emissão:T', title='Data'),
-            alt.Tooltip('Valor do Empenho Convertido pra R$:Q', title='Valor', format=",.2f")
+            alt.Tooltip('Valor Formatado:N', title='Valor')
         ]
     )
     .properties(width=800, height=400)
@@ -85,15 +96,16 @@ st.altair_chart(evolution_chart, use_container_width=True)
 st.header('Análise dos maiores beneficiários', divider='gray')
 top_beneficiaries_df = filtered_df.groupby('Favorecido')['Valor do Empenho Convertido pra R$'].sum().reset_index()
 top_beneficiaries_df = top_beneficiaries_df.sort_values(by='Valor do Empenho Convertido pra R$', ascending=False).head(10)
+top_beneficiaries_df['Valor Formatado'] = top_beneficiaries_df['Valor do Empenho Convertido pra R$'].apply(adicionar_unidade)
 top_beneficiaries_chart = (
     alt.Chart(top_beneficiaries_df)
     .mark_bar()
     .encode(
-        x=alt.X('Valor do Empenho Convertido pra R$:Q', title='Valor (R$)', axis=alt.Axis(format=",.2f")),
+        x=alt.X('Valor do Empenho Convertido pra R$:Q', title='Valor (R$)'),
         y=alt.Y('Favorecido:N', sort='-x', title='Favorecido'),
         tooltip=[
             alt.Tooltip('Favorecido:N', title='Favorecido'),
-            alt.Tooltip('Valor do Empenho Convertido pra R$:Q', title='Valor', format=",.2f")
+            alt.Tooltip('Valor Formatado:N', title='Valor')
         ]
     )
     .properties(width=800, height=400)
@@ -104,15 +116,16 @@ st.altair_chart(top_beneficiaries_chart, use_container_width=True)
 st.header('Comparação por órgão governamental', divider='gray')
 organs_df = filtered_df.groupby('Órgão')['Valor do Empenho Convertido pra R$'].sum().reset_index()
 organs_df = organs_df.sort_values(by='Valor do Empenho Convertido pra R$', ascending=False)
+organs_df['Valor Formatado'] = organs_df['Valor do Empenho Convertido pra R$'].apply(adicionar_unidade)
 organs_chart = (
     alt.Chart(organs_df)
     .mark_bar()
     .encode(
         x=alt.X('Órgão:N', sort='-y', title='Órgão'),
-        y=alt.Y('Valor do Empenho Convertido pra R$:Q', title='Valor (R$)', axis=alt.Axis(format=",.2f")),
+        y=alt.Y('Valor do Empenho Convertido pra R$:Q', title='Valor (R$)'),
         tooltip=[
             alt.Tooltip('Órgão:N', title='Órgão'),
-            alt.Tooltip('Valor do Empenho Convertido pra R$:Q', title='Valor', format=",.2f")
+            alt.Tooltip('Valor Formatado:N', title='Valor')
         ]
     )
     .properties(width=800, height=400)
@@ -124,5 +137,5 @@ st.header('Resumo dos valores empenhados', divider='gray')
 total_empenhado = filtered_df['Valor do Empenho Convertido pra R$'].sum()
 st.metric(
     label="Total de valores empenhados (filtro aplicado)",
-    value=formatar_real(total_empenhado)
+    value=adicionar_unidade(total_empenhado)
 )
