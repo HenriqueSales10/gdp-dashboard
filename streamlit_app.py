@@ -18,6 +18,7 @@ def get_empenhos_data():
 
 # Função para formatar valores monetários
 def formatar_real(valor):
+    """Formata valores para o formato monetário brasileiro."""
     return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 # Carregar os dados de empenhos
@@ -70,10 +71,10 @@ evolution_chart = (
     .mark_line(point=True)
     .encode(
         x=alt.X('Data Emissão:T', title='Data'),
-        y=alt.Y('Valor do Empenho Convertido pra R$:Q', title='Valor (R$)', axis=alt.Axis(format='R$,.2f')),
+        y=alt.Y('Valor do Empenho Convertido pra R$:Q', title='Valor (R$)'),
         tooltip=[
             alt.Tooltip('Data Emissão:T', title='Data'),
-            alt.Tooltip('Valor do Empenho Convertido pra R$:Q', title='Valor', format='.2f')
+            alt.Tooltip('Valor do Empenho Convertido pra R$:Q', title='Valor', format=",.2f")
         ]
     )
     .properties(width=800, height=400)
@@ -88,11 +89,11 @@ top_beneficiaries_chart = (
     alt.Chart(top_beneficiaries_df)
     .mark_bar()
     .encode(
-        x=alt.X('Valor do Empenho Convertido pra R$:Q', title='Valor (R$)', axis=alt.Axis(format='R$,.2f')),
+        x=alt.X('Valor do Empenho Convertido pra R$:Q', title='Valor (R$)', axis=alt.Axis(format=",.2f")),
         y=alt.Y('Favorecido:N', sort='-x', title='Favorecido'),
         tooltip=[
             alt.Tooltip('Favorecido:N', title='Favorecido'),
-            alt.Tooltip('Valor do Empenho Convertido pra R$:Q', title='Valor', format='.2f')
+            alt.Tooltip('Valor do Empenho Convertido pra R$:Q', title='Valor', format=",.2f")
         ]
     )
     .properties(width=800, height=400)
@@ -108,10 +109,10 @@ organs_chart = (
     .mark_bar()
     .encode(
         x=alt.X('Órgão:N', sort='-y', title='Órgão'),
-        y=alt.Y('Valor do Empenho Convertido pra R$:Q', title='Valor (R$)', axis=alt.Axis(format='R$,.2f')),
+        y=alt.Y('Valor do Empenho Convertido pra R$:Q', title='Valor (R$)', axis=alt.Axis(format=",.2f")),
         tooltip=[
             alt.Tooltip('Órgão:N', title='Órgão'),
-            alt.Tooltip('Valor do Empenho Convertido pra R$:Q', title='Valor', format='.2f')
+            alt.Tooltip('Valor do Empenho Convertido pra R$:Q', title='Valor', format=",.2f")
         ]
     )
     .properties(width=800, height=400)
