@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from pathlib import Path
+import altair as alt
 
 # Configurações da página no Streamlit
 st.set_page_config(
@@ -64,27 +65,58 @@ st.write(filtered_df_display[['Id Empenho', 'Data Emissão', 'Categoria de Despe
 # Gráfico de evolução dos valores empenhados ao longo do tempo
 st.header('Evolução dos valores empenhados ao longo do tempo', divider='gray')
 evolution_df = filtered_df.groupby(['Data Emissão'])['Valor do Empenho Convertido pra R$'].sum().reset_index()
-evolution_df['Valor do Empenho Convertido pra R$'] = evolution_df['Valor do Empenho Convertido pra R$'].apply(formatar_real)
-st.line_chart(
-    filtered_df.groupby(['Data Emissão'])['Valor do Empenho Convertido pra R$'].sum()
+evolution_chart = (
+    alt.Chart(evolution_df)
+    .mark_line(point=True)
+    .encode(
+        x=alt.X('Data Emissão:T', title='Data'),
+        y=alt.Y('Valor do Empenho Convertido pra R$:Q', title='Valor (R$)', axis=alt.Axis(format='R$,.2f')),
+        tooltip=[
+            alt.Tooltip('Data Emissão:T', title='Data'),
+            alt.Tooltip('Valor do Empenho Convertido pra R$:Q', title='Valor', format='.2f')
+        ]
+    )
+    .properties(width=800, height=400)
 )
+st.altair_chart(evolution_chart, use_container_width=True)
 
 # Análise dos maiores beneficiários
 st.header('Análise dos maiores beneficiários', divider='gray')
 top_beneficiaries_df = filtered_df.groupby('Favorecido')['Valor do Empenho Convertido pra R$'].sum().reset_index()
 top_beneficiaries_df = top_beneficiaries_df.sort_values(by='Valor do Empenho Convertido pra R$', ascending=False).head(10)
-top_beneficiaries_df['Valor do Empenho Convertido pra R$'] = top_beneficiaries_df[
-    'Valor do Empenho Convertido pra R$'
-].apply(formatar_real)
-st.write(top_beneficiaries_df)
+top_beneficiaries_chart = (
+    alt.Chart(top_beneficiaries_df)
+    .mark_bar()
+    .encode(
+        x=alt.X('Valor do Empenho Convertido pra R$:Q', title='Valor (R$)', axis=alt.Axis(format='R$,.2f')),
+        y=alt.Y('Favorecido:N', sort='-x', title='Favorecido'),
+        tooltip=[
+            alt.Tooltip('Favorecido:N', title='Favorecido'),
+            alt.Tooltip('Valor do Empenho Convertido pra R$:Q', title='Valor', format='.2f')
+        ]
+    )
+    .properties(width=800, height=400)
+)
+st.altair_chart(top_beneficiaries_chart, use_container_width=True)
 
 # Comparação por órgão governamental
 st.header('Comparação por órgão governamental', divider='gray')
 organs_df = filtered_df.groupby('Órgão')['Valor do Empenho Convertido pra R$'].sum().reset_index()
 organs_df = organs_df.sort_values(by='Valor do Empenho Convertido pra R$', ascending=False)
-st.bar_chart(
-    organs_df.set_index('Órgão')['Valor do Empenho Convertido pra R$']
+organs_chart = (
+    alt.Chart(organs_df)
+    .mark_bar()
+    .encode(
+        x=alt.X('Órgão:N', sort='-y', title='Órgão'),
+        y=alt.Y('Valor do Empenho Convertido pra R$:Q', title='Valor (R$)', axis=alt.Axis(format='R$,.2f')),
+        tooltip=[
+            alt.Tooltip('Órgão:N', title='Órgão'),
+            alt.Tooltip('Valor do Empenho Convertido pra R$:Q', title='Valor', format='.2f')
+        ]
+    )
+    .properties(width=800, height=400)
 )
+st.altair_chart(organs_chart, use_container_width=True)
 
 # Resumo dos valores empenhados considerando o filtro
 st.header('Resumo dos valores empenhados', divider='gray')
@@ -93,20 +125,3 @@ st.metric(
     label="Total de valores empenhados (filtro aplicado)",
     value=formatar_real(total_empenhado)
 )
-
-# Botão para download dos valores com Id Empenho
-st.header('Download dos Valores com Id Empenho', divider='gray')
-filtered_df_csv = filtered_df.copy()
-filtered_df_csv['Valor do Empenho Convertido pra R$'] = filtered_df_csv[
-    'Valor do Empenho Convertido pra R$'
-].apply(formatar_real)
-csv_data = filtered_df_csv[['Id Empenho', 'Valor do Empenho Convertido pra R$']].to_csv(index=False)
-st.download_button(
-    label="Baixar Valores com Id Empenho",
-    data=csv_data,
-    file_name='id_empenho_valores.csv',
-    mime='text/csv'
-)
-
-# Exibir os valores na tela para conferência
-st.write(filtered_df_display[['Id Empenho', 'Valor do Empenho Convertido pra R$']])
