@@ -15,6 +15,10 @@ def get_empenhos_data():
     raw_df = pd.read_excel(DATA_FILENAME)
     return raw_df
 
+# Função para formatar valores monetários
+def formatar_real(valor):
+    return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
 # Carregar os dados de empenhos
 df = get_empenhos_data()
 
@@ -51,21 +55,27 @@ filtered_df = filtered_df[filtered_df['Categoria de Despesa'].isin(selected_cate
 
 # Mostrar todos os valores considerados para os cálculos
 st.header('Valores Considerados para os Cálculos', divider='gray')
-st.write(filtered_df[['Data Emissão', 'Categoria de Despesa', 'Valor do Empenho Convertido pra R$']])
+filtered_df_display = filtered_df.copy()
+filtered_df_display['Valor do Empenho Convertido pra R$'] = filtered_df_display[
+    'Valor do Empenho Convertido pra R$'
+].apply(formatar_real)
+st.write(filtered_df_display[['Id Empenho', 'Data Emissão', 'Categoria de Despesa', 'Valor do Empenho Convertido pra R$']])
 
 # Gráfico de evolução dos valores empenhados ao longo do tempo
 st.header('Evolução dos valores empenhados ao longo do tempo', divider='gray')
 evolution_df = filtered_df.groupby(['Data Emissão'])['Valor do Empenho Convertido pra R$'].sum().reset_index()
+evolution_df['Valor do Empenho Convertido pra R$'] = evolution_df['Valor do Empenho Convertido pra R$'].apply(formatar_real)
 st.line_chart(
-    evolution_df,
-    x='Data Emissão',
-    y='Valor do Empenho Convertido pra R$',
+    filtered_df.groupby(['Data Emissão'])['Valor do Empenho Convertido pra R$'].sum()
 )
 
 # Análise dos maiores beneficiários
 st.header('Análise dos maiores beneficiários', divider='gray')
 top_beneficiaries_df = filtered_df.groupby('Favorecido')['Valor do Empenho Convertido pra R$'].sum().reset_index()
 top_beneficiaries_df = top_beneficiaries_df.sort_values(by='Valor do Empenho Convertido pra R$', ascending=False).head(10)
+top_beneficiaries_df['Valor do Empenho Convertido pra R$'] = top_beneficiaries_df[
+    'Valor do Empenho Convertido pra R$'
+].apply(formatar_real)
 st.write(top_beneficiaries_df)
 
 # Comparação por órgão governamental
@@ -81,12 +91,16 @@ st.header('Resumo dos valores empenhados', divider='gray')
 total_empenhado = filtered_df['Valor do Empenho Convertido pra R$'].sum()
 st.metric(
     label="Total de valores empenhados (filtro aplicado)",
-    value=f"R$ {total_empenhado:,.2f}"
+    value=formatar_real(total_empenhado)
 )
 
-# Botão para download dos valores e Id Empenho
+# Botão para download dos valores com Id Empenho
 st.header('Download dos Valores com Id Empenho', divider='gray')
-csv_data = filtered_df[['Id Empenho', 'Valor do Empenho Convertido pra R$']].to_csv(index=False)
+filtered_df_csv = filtered_df.copy()
+filtered_df_csv['Valor do Empenho Convertido pra R$'] = filtered_df_csv[
+    'Valor do Empenho Convertido pra R$'
+].apply(formatar_real)
+csv_data = filtered_df_csv[['Id Empenho', 'Valor do Empenho Convertido pra R$']].to_csv(index=False)
 st.download_button(
     label="Baixar Valores com Id Empenho",
     data=csv_data,
@@ -95,4 +109,4 @@ st.download_button(
 )
 
 # Exibir os valores na tela para conferência
-st.write(filtered_df[['Id Empenho', 'Valor do Empenho Convertido pra R$']])
+st.write(filtered_df_display[['Id Empenho', 'Valor do Empenho Convertido pra R$']])
