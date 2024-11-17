@@ -2,16 +2,17 @@ import streamlit as st
 import pandas as pd
 from pathlib import Path
 
+# Configurações da página no Streamlit
 st.set_page_config(
     page_title='Empenhos do Governo Federal - Dashboard',
-    page_icon=':bar_chart:', 
+    page_icon=':bar_chart:',
 )
 
 @st.cache_data
 def get_empenhos_data():
-    """Carrega os dados de empenhos do arquivo CSV."""
-    DATA_FILENAME = Path(__file__).parent / 'data/202401_Empenhos.csv'
-    raw_df = pd.read_csv(DATA_FILENAME)
+    """Carrega os dados de empenhos do arquivo Excel (.xlsx)."""
+    DATA_FILENAME = Path(__file__).parent / 'data/202401_Empenhos.xlsx'
+    raw_df = pd.read_excel(DATA_FILENAME)
     return raw_df
 
 # Carregar os dados de empenhos
@@ -75,24 +76,23 @@ st.bar_chart(
     organs_df.set_index('Órgão')['Valor do Empenho Convertido pra R$']
 )
 
-# Resumo dos valores empenhados
+# Resumo dos valores empenhados considerando o filtro
 st.header('Resumo dos valores empenhados', divider='gray')
-total_empenhado = df['Valor do Empenho Convertido pra R$'].sum()
+total_empenhado = filtered_df['Valor do Empenho Convertido pra R$'].sum()
 st.metric(
-    label="Total de valores empenhados",
+    label="Total de valores empenhados (filtro aplicado)",
     value=f"R$ {total_empenhado:,.2f}"
 )
 
-# Permitir o download dos valores das colunas "Id Empenho" e "Valor do Empenho Convertido pra R$"
+# Botão para download dos valores e Id Empenho
 st.header('Download dos Valores com Id Empenho', divider='gray')
-
-# Selecionar as colunas desejadas e converter para CSV
-csv_data = df[['Id Empenho', 'Valor do Empenho Convertido pra R$']].to_csv(index=False)
-
-# Adicionar o botão de download
+csv_data = filtered_df[['Id Empenho', 'Valor do Empenho Convertido pra R$']].to_csv(index=False)
 st.download_button(
     label="Baixar Valores com Id Empenho",
     data=csv_data,
     file_name='id_empenho_valores.csv',
     mime='text/csv'
 )
+
+# Exibir os valores na tela para conferência
+st.write(filtered_df[['Id Empenho', 'Valor do Empenho Convertido pra R$']])
