@@ -9,23 +9,33 @@ st.set_page_config(
 
 @st.cache_data
 def get_empenhos_data():
-    """Carrega os dados de empenhos do CSV."""
-    DATA_FILENAME = Path(__file__).parent/'data/202401_Empenhos.csv'
+    """Carrega os dados de empenhos do arquivo CSV."""
+    DATA_FILENAME = Path(__file__).parent / 'data/202401_Empenhos.csv'
     raw_df = pd.read_csv(DATA_FILENAME)
-    st.write(raw_df.head())
     return raw_df
 
 # Carregar os dados de empenhos
 df = get_empenhos_data()
 
-# Converter a coluna de valores para float, tratando erros
+# Exibir o número total de registros lidos da base
+total_registros = len(df)
+st.write(f"Total de registros lidos da base: {total_registros}")
+
+# Converter a coluna de valores para float e a coluna de datas
 df['Valor do Empenho Convertido pra R$'] = pd.to_numeric(
     df['Valor do Empenho Convertido pra R$'], errors='coerce'
 )
-
-# Filtro para o mês de janeiro de 2024
 df['Data Emissão'] = pd.to_datetime(df['Data Emissão'], errors='coerce')
-filtered_df = df[df['Data Emissão'].dt.month == 1]
+
+# Filtro de período de dias
+st.header('Filtro por Período de Dias')
+start_date, end_date = st.date_input(
+    'Selecione o período',
+    value=(df['Data Emissão'].min(), df['Data Emissão'].max())
+)
+
+# Aplicar o filtro de período de dias
+filtered_df = df[(df['Data Emissão'] >= pd.to_datetime(start_date)) & (df['Data Emissão'] <= pd.to_datetime(end_date))]
 
 # Filtro de categorias econômicas
 categories = filtered_df['Categoria de Despesa'].unique()
@@ -37,6 +47,10 @@ selected_categories = st.multiselect(
 
 # Filtrar os dados com base na categoria
 filtered_df = filtered_df[filtered_df['Categoria de Despesa'].isin(selected_categories)]
+
+# Mostrar todos os valores considerados para os cálculos
+st.header('Valores Considerados para os Cálculos', divider='gray')
+st.write(filtered_df[['Data Emissão', 'Categoria de Despesa', 'Valor do Empenho Convertido pra R$']])
 
 # Gráfico de evolução dos valores empenhados ao longo do tempo
 st.header('Evolução dos valores empenhados ao longo do tempo', divider='gray')
@@ -63,8 +77,22 @@ st.bar_chart(
 
 # Resumo dos valores empenhados
 st.header('Resumo dos valores empenhados', divider='gray')
-total_empenhado = filtered_df['Valor do Empenho Convertido pra R$'].sum()
+total_empenhado = df['Valor do Empenho Convertido pra R$'].sum()
 st.metric(
     label="Total de valores empenhados",
     value=f"R$ {total_empenhado:,.2f}"
+)
+
+# Permitir o download dos valores das colunas "Id Empenho" e "Valor do Empenho Convertido pra R$"
+st.header('Download dos Valores com Id Empenho', divider='gray')
+
+# Selecionar as colunas desejadas e converter para CSV
+csv_data = df[['Id Empenho', 'Valor do Empenho Convertido pra R$']].to_csv(index=False)
+
+# Adicionar o botão de download
+st.download_button(
+    label="Baixar Valores com Id Empenho",
+    data=csv_data,
+    file_name='id_empenho_valores.csv',
+    mime='text/csv'
 )
