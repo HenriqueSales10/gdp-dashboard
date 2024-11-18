@@ -34,10 +34,6 @@ def adicionar_unidade(valor):
 # Carregar os dados de empenhos
 df = get_empenhos_data()
 
-# Exibir o número total de registros lidos da base
-total_registros = len(df)
-st.write(f"Total de registros lidos da base: {total_registros}")
-
 # Converter a coluna de valores para float e a coluna de datas
 df['Valor do Empenho Convertido pra R$'] = pd.to_numeric(
     df['Valor do Empenho Convertido pra R$'], errors='coerce'
@@ -115,7 +111,7 @@ st.altair_chart(top_beneficiaries_chart, use_container_width=True)
 # Comparação por órgão governamental
 st.header('Comparação por órgão governamental', divider='gray')
 organs_df = filtered_df.groupby('Órgão')['Valor do Empenho Convertido pra R$'].sum().reset_index()
-organs_df = organs_df.sort_values(by='Valor do Empenho Convertido pra R$', ascending=False)
+organs_df = organs_df.sort_values(by='Valor do Empenho Convertido pra R$', ascending=False).head(10)
 organs_df['Valor Formatado'] = organs_df['Valor do Empenho Convertido pra R$'].apply(adicionar_unidade)
 organs_chart = (
     alt.Chart(organs_df)
@@ -131,6 +127,36 @@ organs_chart = (
     .properties(width=800, height=400)
 )
 st.altair_chart(organs_chart, use_container_width=True)
+
+# Distribuição por Categoria Econômica
+st.header('Distribuição por Categoria Econômica', divider='gray')
+
+category_distribution = (
+    filtered_df.groupby('Categoria de Despesa')['Valor do Empenho Convertido pra R$']
+    .sum()
+    .reset_index()
+)
+category_distribution['Valor Formatado'] = category_distribution['Valor do Empenho Convertido pra R$'].apply(adicionar_unidade)
+
+# Gráfico de pizza com Altair
+category_chart = (
+    alt.Chart(category_distribution)
+    .mark_arc()
+    .encode(
+        theta=alt.Theta('Valor do Empenho Convertido pra R$:Q', title='Valor (R$)'),
+        color=alt.Color('Categoria de Despesa:N', legend=None),
+        tooltip=[
+            alt.Tooltip('Categoria de Despesa:N', title='Categoria'),
+            alt.Tooltip('Valor Formatado:N', title='Valor')
+        ]
+    )
+    .properties(width=800, height=400)
+)
+st.altair_chart(category_chart, use_container_width=True)
+
+# Mostrar a tabela com valores
+st.write(category_distribution)
+
 
 # Resumo dos valores empenhados considerando o filtro
 st.header('Resumo dos valores empenhados', divider='gray')
