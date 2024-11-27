@@ -7,7 +7,7 @@ import altair as alt
 st.set_page_config(
     page_title='Empenhos do Governo Federal - Dashboard',  # Título da página
     page_icon=':bar_chart:',  # Ícone exibido no navegador
-    layout="wide"  # Layout largo, ideal para dashboards
+    layout="wide"  # Layout largo
 )
 
 # Função para carregar os dados com caching para melhorar desempenho
